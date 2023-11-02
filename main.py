@@ -157,6 +157,10 @@ def downloadComic(link):
                     line_count = 0
                     wait = False
                     #print(f'Line {y + 1}: Pixels have different colors')
+                if y == height - 1: # save the remaining image
+                    count += 1
+                    segment = image.crop((0, lasty, width, y))
+                    segment.save(f'data/{make_safe_filename_windows(title)}/{chapter_index}/{count}.png')
             print('')
 
         book_chapter = epub.EpubHtml(title=chapter[0], file_name=f'chapter{chapter_index}.xhtml')
