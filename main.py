@@ -7,6 +7,8 @@ from ebooklib import epub
 import re
 import argparse
 
+Image.MAX_IMAGE_PIXELS = 200000000 # We expect to get some really big images hopefully this is big enough
+
 args = argparse.ArgumentParser()
 args.description = 'Download and convert a whole webtoon series to epub.'
 args.add_argument('link', help='Link to webtoon comic to download. (This should be the link to chapter list.)', type=str)
