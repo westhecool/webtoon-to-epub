@@ -17,6 +17,12 @@ args = args.parse_args()
 
 chapter_page_count_total = 0
 
+def make_safe_filename_windows(filename):
+    illegal_chars = r'<>:"/\|?*'
+    for char in illegal_chars:
+        filename = filename.replace(char, '_')
+    return filename
+
 def combineImagesVertically(image_paths):
     images = [Image.open(image) for image in image_paths]
 
@@ -40,13 +46,13 @@ def downloadChapter(link, title, chapterid):
     soup = BeautifulSoup(html, 'html.parser')
     imglist = soup.find(id='_imageList').findChildren('img')
     i = 0
-    if not os.path.exists(f'data/{title}/{chapterid}'):
-        os.makedirs(f'data/{title}/{chapterid}')
+    if not os.path.exists(f'data/{make_safe_filename_windows(title)}/{chapterid}'):
+        os.makedirs(f'data/{make_safe_filename_windows(title)}/{chapterid}')
     for img in imglist:
         i += 1
         print(f'\rDownloading image {i}/{len(imglist)}', end='')
         img = requests.get(img['data-url'], headers={'Referer': link}).content
-        with open(f'data/{title}/{chapterid}/{i}.png', 'wb') as f:
+        with open(f'data/{make_safe_filename_windows(title)}/{chapterid}/{i}.png', 'wb') as f:
             f.write(img)
     print('')
 
@@ -86,6 +92,11 @@ def downloadComic(link):
     print('Genre: ' + genre)
     print('Author: ' + author)
 
+    try:
+        shutil.rmtree(f'data/{make_safe_filename_windows(title)}')
+    except:
+        pass
+
     chapters = []
     while chapter_page_count < chapter_page_count_total:
         chapter_page_count += 1
@@ -114,12 +125,12 @@ def downloadComic(link):
         if args.auto_crop:
             print(f'Auto cropping chapter {chapter_index}: {chapter[0]}')
             images = []
-            for img in sorted(os.listdir(f'data/{title}/{chapter_index}'), key=getNumericIndex):
-                images.append(f'data/{title}/{chapter_index}/{img}')
+            for img in sorted(os.listdir(f'data/{make_safe_filename_windows(title)}/{chapter_index}'), key=getNumericIndex):
+                images.append(f'data/{make_safe_filename_windows(title)}/{chapter_index}/{img}')
             image = combineImagesVertically(images)
             # Remove all images in the chapter folder
-            for img in os.listdir(f'data/{title}/{chapter_index}'):
-                os.remove(f'data/{title}/{chapter_index}/{img}')
+            for img in os.listdir(f'data/{make_safe_filename_windows(title)}/{chapter_index}'):
+                os.remove(f'data/{make_safe_filename_windows(title)}/{chapter_index}/{img}')
             lasty = 0
             line_count = 0
             count = 0
@@ -137,7 +148,7 @@ def downloadComic(link):
                         if line_count == args.auto_crop_line_count:
                             count += 1
                             segment = image.crop((0, lasty, width, y))
-                            segment.save(f'data/{title}/{chapter_index}/{count}.png')
+                            segment.save(f'data/{make_safe_filename_windows(title)}/{chapter_index}/{count}.png')
                             lasty = y
                             line_count = 0
                             wait = True
@@ -151,10 +162,10 @@ def downloadComic(link):
         book_chapter = epub.EpubHtml(title=chapter[0], file_name=f'chapter{chapter_index}.xhtml')
         book_chapter.content = '<body style="margin: 0;">'
 
-        imgs = sorted(os.listdir(f'data/{title}/{chapter_index}'), key=getNumericIndex)
+        imgs = sorted(os.listdir(f'data/{make_safe_filename_windows(title)}/{chapter_index}'), key=getNumericIndex)
         for img in imgs:
             print(f'\rAdding image {getNumericIndex(img)}/{len(imgs)} to book', end='')
-            image = epub.EpubItem(file_name=f'chapter{chapter_index}/{img}', content=open(f'data/{title}/{chapter_index}/{img}', 'rb').read())
+            image = epub.EpubItem(file_name=f'chapter{chapter_index}/{img}', content=open(f'data/{make_safe_filename_windows(title)}/{chapter_index}/{img}', 'rb').read())
             book.add_item(image)
             book_chapter.content += f'<img style="height: 100%;" src="chapter{chapter_index}/{img}"/>'
         print('')
@@ -176,11 +187,11 @@ def downloadComic(link):
 
     # Save the ePub
     print('Saving book')
-    epub.write_epub(f'{title}.epub', book, {})
+    epub.write_epub(f'{make_safe_filename_windows(title)}.epub', book, {})
 
     if args.clean_up:
         print('Cleaning up')
-        shutil.rmtree(f'data/{title}')
+        shutil.rmtree(f'data/{make_safe_filename_windows(title)}')
 
 
 downloadComic(re.sub(r'&page=.*', '', args.link))
