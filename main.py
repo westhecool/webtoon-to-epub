@@ -74,9 +74,12 @@ def downloadComic(link):
     html = requests.get(link).text
     soup = BeautifulSoup(html, 'html.parser')
     info = soup.find('div', class_='info')
-    title = info.find('h1').text
-    genre = info.find('h2').text
-    author = info.find('div').text.replace('author info', '').strip()
+    title = info.find(class_='subj').text.strip()
+    genre = info.find(class_='genre').text.strip()
+    try:
+        author = info.find(class_='author').text.replace('author info', '').strip()
+    except:
+        author = info.find(class_='author_area').text.replace('author info', '').strip()
     chapter_page_count = 0
     chapter_page_count_total = len(soup.find('div', class_='paginate').findChildren('a'))
     print('Title: ' + title)
