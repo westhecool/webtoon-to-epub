@@ -184,7 +184,7 @@ def downloadComic(link):
 
         book.spine.append(book_chapter)
 
-    print('') # Add empty line at the end of a chapter
+        print('') # Add empty line at the end of a chapter
         
         
     # Add default NCX and Nav file
