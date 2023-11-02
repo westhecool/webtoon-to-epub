@@ -11,7 +11,7 @@ args = argparse.ArgumentParser()
 args.description = 'Download and convert a whole webtoon series to epub.'
 args.add_argument('link', help='Link to webtoon comic to download. (This should be the link to chapter list.)', type=str)
 args.add_argument('--clean-up', help='Clean up the downloaded images after they are put in the epub.', type=bool, default=True, action=argparse.BooleanOptionalAction)
-args.add_argument('--auto-crop', help='Automatically crop the images. (Read more about this in the README on the GitHub.)', type=bool, default=False, action=argparse.BooleanOptionalAction)
+args.add_argument('--auto-crop', help='Automatically crop the images. (Read more about this in the README on the GitHub.)', type=bool, default=True, action=argparse.BooleanOptionalAction)
 args.add_argument('--auto-crop-line-count', help='(See README on GitHub.)', type=int, default=30)
 args = args.parse_args()
 
