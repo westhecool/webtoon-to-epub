@@ -5,6 +5,7 @@ from PIL import Image
 import requests
 from ebooklib import epub
 import re
+import io
 import argparse
 
 Image.MAX_IMAGE_PIXELS = 200000000 # We expect to get some really big images hopefully this is big enough
@@ -54,8 +55,9 @@ def downloadChapter(link, title, chapterid):
         i += 1
         print(f'\rDownloading image {i}/{len(imglist)}', end='')
         img = requests.get(img['data-url'], headers={'Referer': link}).content
-        with open(f'data/{make_safe_filename_windows(title)}/{chapterid}/{i}.png', 'wb') as f:
-            f.write(img)
+        image = Image.open(io.BytesIO(img))
+        image = image.convert('RGB')
+        image.save(f'data/{make_safe_filename_windows(title)}/{chapterid}/{i}.jpg')
     print('')
 
 def getChapterList(link):
@@ -150,7 +152,7 @@ def downloadComic(link):
                         if line_count == args.auto_crop_line_count:
                             count += 1
                             segment = image.crop((0, lasty, width, y))
-                            segment.save(f'data/{make_safe_filename_windows(title)}/{chapter_index}/{count}.png')
+                            segment.save(f'data/{make_safe_filename_windows(title)}/{chapter_index}/{count}.jpg')
                             lasty = y
                             line_count = 0
                             wait = True
@@ -162,7 +164,7 @@ def downloadComic(link):
                 if y == height - 1: # save the remaining image
                     count += 1
                     segment = image.crop((0, lasty, width, y))
-                    segment.save(f'data/{make_safe_filename_windows(title)}/{chapter_index}/{count}.png')
+                    segment.save(f'data/{make_safe_filename_windows(title)}/{chapter_index}/{count}.jpg')
             print('')
 
         book_chapter = epub.EpubHtml(title=chapter[0], file_name=f'chapter{chapter_index}.xhtml')
