@@ -16,6 +16,8 @@ args.add_argument('link', help='Link to webtoon comic to download. (This should 
 args.add_argument('--clean-up', help='Clean up the downloaded images after they are put in the epub.', type=bool, default=True, action=argparse.BooleanOptionalAction)
 args.add_argument('--auto-crop', help='Automatically crop the images. (Read more about this in the README on the GitHub.)', type=bool, default=True, action=argparse.BooleanOptionalAction)
 args.add_argument('--auto-crop-line-count', help='(See README on GitHub.)', type=int, default=30)
+args.add_argument('--split-into-parts', help='Split the comic into parts.', type=bool, default=False, action=argparse.BooleanOptionalAction)
+args.add_argument('--chapters-per-part', help='Chapters per part. (Default: 100)', type=int, default=100)
 args = args.parse_args()
 
 chapter_page_count_total = 0
@@ -80,7 +82,7 @@ def getChapterList(link):
     return chapter_list
 
 def downloadComic(link):
-    print('Link: ' + link)
+    print(f'Link: {link}')
     global chapter_page_count_total
     html = requests.get(link).text
     soup = BeautifulSoup(html, 'html.parser')
@@ -94,9 +96,9 @@ def downloadComic(link):
     chapter_page_count = 0
     chapter_page_count_total = len(soup.find('div', class_='paginate').findChildren('a'))
 
-    print('Title: ' + title)
-    print('Genre: ' + genre)
-    print('Author: ' + author)
+    print(f'Title: {title}')
+    print(f'Genre: {genre}')
+    print(f'Author: {author}')
 
     try:
         shutil.rmtree(f'data/{make_safe_filename_windows(title)}')
@@ -107,24 +109,29 @@ def downloadComic(link):
     while chapter_page_count < chapter_page_count_total:
         chapter_page_count += 1
         print(f'\rFetching chapters from page {chapter_page_count}/{chapter_page_count_total}', end='')
-        chapters.extend(getChapterList(link + '&page=' + str(chapter_page_count)))
+        chapters.extend(getChapterList(f'{link}&page={chapter_page_count}'))
     print('')
 
-    print('Chapter count: ' + str(len(chapters)))
+    print(f'Chapter count: {len(chapters)}')
+
+    print('')
     
     chapters = list(reversed(chapters)) # reverse the list because webtoon lists the newest chapters first
-
+ 
     book = epub.EpubBook()
-
-    # Set metadata
-    book.set_title(title)
+    if args.split_into_parts:
+        book.set_title(f'{title} - Part 1')
+    else:
+        book.set_title(title)
     book.add_author(author)
-
     book.spine = ['nav']
 
     chapter_index = 0
+    chapter_index_parts = 0
+    part_count = 0
     for chapter in chapters: # chapter[0] is the title, chapter[1] is the link
         chapter_index += 1
+        chapter_index_parts += 1
         print(f'Downloading chapter {chapter_index}: {chapter[0]}')
         downloadChapter(chapter[1], title, chapter_index)
         
@@ -189,15 +196,44 @@ def downloadComic(link):
         book.spine.append(book_chapter)
 
         print('') # Add empty line at the end of a chapter
-        
-        
-    # Add default NCX and Nav file
-    book.add_item(epub.EpubNcx())
-    book.add_item(epub.EpubNav())
+        if args.split_into_parts:
+            if chapter_index_parts == args.chapters_per_part:
+                chapter_index_parts = 0
+                part_count += 1
 
-    # Save the ePub
-    print('Saving book')
-    epub.write_epub(f'{make_safe_filename_windows(title)}.epub', book, {})
+                # Add default NCX and Nav file
+                book.add_item(epub.EpubNcx())
+                book.add_item(epub.EpubNav())
+
+                # Save the ePub
+                print(f'Saving book part {part_count}')
+                epub.write_epub(f'{make_safe_filename_windows(title)} - Part {part_count}.epub', book, {})
+
+                book = epub.EpubBook()
+                book.set_title(f'{title} - Part {part_count + 1}')
+                book.add_author(author)
+                book.spine = ['nav']
+                
+                print('')
+        
+    if not args.split_into_parts:
+        # Add default NCX and Nav file
+        book.add_item(epub.EpubNcx())
+        book.add_item(epub.EpubNav())
+
+        # Save the ePub
+        print('Saving book')
+        epub.write_epub(f'{make_safe_filename_windows(title)}.epub', book, {})
+    elif chapter_index_parts != 0:
+        part_count += 1
+        
+        # Add default NCX and Nav file
+        book.add_item(epub.EpubNcx())
+        book.add_item(epub.EpubNav())
+
+        # Save the ePub
+        print(f'Saving book part {part_count}')
+        epub.write_epub(f'{make_safe_filename_windows(title)} - Part {part_count}.epub', book, {})
 
     if args.clean_up:
         print('Cleaning up')
