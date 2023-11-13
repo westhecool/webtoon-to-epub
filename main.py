@@ -80,6 +80,7 @@ def getChapterList(link):
     return chapter_list
 
 def downloadComic(link):
+    print('Link: ' + link)
     global chapter_page_count_total
     html = requests.get(link).text
     soup = BeautifulSoup(html, 'html.parser')
@@ -92,6 +93,7 @@ def downloadComic(link):
         author = info.find(class_='author_area').text.replace('author info', '').strip()
     chapter_page_count = 0
     chapter_page_count_total = len(soup.find('div', class_='paginate').findChildren('a'))
+
     print('Title: ' + title)
     print('Genre: ' + genre)
     print('Author: ' + author)
@@ -110,7 +112,7 @@ def downloadComic(link):
 
     print('Chapter count: ' + str(len(chapters)))
     
-    chapters = list(reversed(chapters)) # reverse the list because webrtoon lists the newest chapters first
+    chapters = list(reversed(chapters)) # reverse the list because webtoon lists the newest chapters first
 
     book = epub.EpubBook()
 
@@ -200,6 +202,9 @@ def downloadComic(link):
     if args.clean_up:
         print('Cleaning up')
         shutil.rmtree(f'data/{make_safe_filename_windows(title)}')
+    
+    print('\n') # Add 2 empty lines at the end of a book
 
-
-downloadComic(re.sub(r'&page=.*', '', args.link))
+for link in args.link.split(','):
+    chapter_page_count_total = 0
+    downloadComic(re.sub(r'&page=.*', '', link))
