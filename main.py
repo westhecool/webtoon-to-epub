@@ -153,10 +153,19 @@ def downloadComic(link):
 
             for y in range(height):
                 print(f'\rLine {y + 1}/{height}', end='')
-                line = [image.getpixel((x, y)) for x in range(width)]
+                line = {}
+                for x in range(width):
+                    data = image.getpixel((x, y))
+                    key = hash(data)
+                    if key in line:
+                        line[key] += 1
+                    else:
+                        line[key] = 1
+                
+                line = dict(sorted(line.items(), key=lambda item: item[1], reverse=True)) # Sort the line in descending order
 
                 # Check if all pixels in the line have the same color
-                if len(set(line)) == 1:
+                if list(line.values())[0] > (width * 0.95): # Check if at least 95% of the pixels in the line are the same color
                     if not wait:
                         line_count += 1
                         if line_count == args.auto_crop_line_count:
