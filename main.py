@@ -93,6 +93,7 @@ def downloadComic(link):
         author = info.find(class_='author').text.replace('author info', '').strip()
     except:
         author = info.find(class_='author_area').text.replace('author info', '').strip()
+    author = re.sub(r'\s{2,}', ' ', author)
     chapter_page_count = 0
     chapter_page_count_total = len(soup.find('div', class_='paginate').findChildren('a'))
 
@@ -226,7 +227,7 @@ def downloadComic(link):
         epub.write_epub(f'{make_safe_filename_windows(title)}.epub', book, {})
     elif chapter_index_parts != 0:
         part_count += 1
-        
+
         # Add default NCX and Nav file
         book.add_item(epub.EpubNcx())
         book.add_item(epub.EpubNav())
