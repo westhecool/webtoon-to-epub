@@ -180,7 +180,7 @@ def downloadComic(link):
                     line_count = 0
                     wait = False
                     #print(f'Line {y + 1}: Pixels have different colors')
-                if y == height - 1: # save the remaining image
+                if y == height - 1 and not y == lasty: # save the remaining image only if there is any more to save
                     count += 1
                     segment = image.crop((0, lasty, width, y))
                     segment.save(f'data/{make_safe_filename_windows(title)}/{chapter_index}/{count}.jpg')
