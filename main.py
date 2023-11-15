@@ -191,7 +191,7 @@ def downloadComic(link):
 
         imgs = sorted(os.listdir(f'data/{make_safe_filename_windows(title)}/{chapter_index}'), key=getNumericIndex)
         for img in imgs:
-            print(f'\rAdding image {getNumericIndex(img)}/{len(imgs)} to book', end='')
+            print(f'\rAdding image {getNumericIndex(img)}/{len(imgs)} to comic', end='')
             image = epub.EpubItem(file_name=f'chapter{chapter_index}/{img}', content=open(f'data/{make_safe_filename_windows(title)}/{chapter_index}/{img}', 'rb').read())
             book.add_item(image)
             book_chapter.content += f'<img style="height: 100%;" src="chapter{chapter_index}/{img}"/>'
@@ -216,7 +216,7 @@ def downloadComic(link):
                 book.add_item(epub.EpubNav())
 
                 # Save the ePub
-                print(f'Saving book part {part_count}')
+                print(f'Saving comic part {part_count}')
                 epub.write_epub(f'{make_safe_filename_windows(title)} - Part {part_count}.epub', book, {})
 
                 book = epub.EpubBook()
@@ -232,7 +232,7 @@ def downloadComic(link):
         book.add_item(epub.EpubNav())
 
         # Save the ePub
-        print('Saving book')
+        print('Saving comic')
         epub.write_epub(f'{make_safe_filename_windows(title)}.epub', book, {})
     elif chapter_index_parts != 0:
         part_count += 1
@@ -242,7 +242,7 @@ def downloadComic(link):
         book.add_item(epub.EpubNav())
 
         # Save the ePub
-        print(f'Saving book part {part_count}')
+        print(f'Saving comic part {part_count}')
         epub.write_epub(f'{make_safe_filename_windows(title)} - Part {part_count}.epub', book, {})
 
     if args.clean_up:
