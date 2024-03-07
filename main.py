@@ -191,6 +191,7 @@ def downloadComic(link):
                 count += 1
                 segment = image.crop((0, lasty, width, y))
                 segment.save(f'data/{make_safe_filename_windows(title)}/{chapter_index}/{count}.jpg')
+                image.close()
             print('')
 
         book_chapter = epub.EpubHtml(title=chapter[0], file_name=f'chapter{chapter_index}.xhtml')
