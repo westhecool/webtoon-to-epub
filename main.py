@@ -150,9 +150,12 @@ def downloadComic(link):
             count = 0
             wait = False
             width, height = image.size
-
+            lastpercent = 0
             for y in range(height):
-                print(f'\rLine {y + 1}/{height}', end='')
+                percent = int(((y + 1) / height) * 100)
+                if percent > lastpercent:
+                    print(f'\r{percent}% done', end='')
+                    lastpercent = percent
                 line = {}
                 for x in range(width):
                     data = image.getpixel((x, y))
