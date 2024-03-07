@@ -2,3 +2,4 @@ pillow
 requests
 beautifulsoup4
 ebooklib
+numpy

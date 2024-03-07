@@ -6,6 +6,7 @@ import requests
 from ebooklib import epub
 import re
 import io
+import numpy as np
 import argparse
 
 Image.MAX_IMAGE_PIXELS = 200000000 # We expect to get some really big images hopefully this is big enough
@@ -151,24 +152,26 @@ def downloadComic(link):
             wait = False
             width, height = image.size
             lastpercent = 0
+            image_array = np.array(image)
             for y in range(height):
                 percent = int(((y + 1) / height) * 100)
                 if percent > lastpercent:
                     print(f'\r{percent}% done', end='')
                     lastpercent = percent
-                line = {}
-                for x in range(width):
-                    data = image.getpixel((x, y))
-                    key = hash(data)
-                    if key in line:
-                        line[key] += 1
-                    else:
-                        line[key] = 1
                 
-                line = dict(sorted(line.items(), key=lambda item: item[1], reverse=True)) # Sort the line in descending order
+                # Extract line of pixels
+                line = image_array[y, :]
+
+                # Count unique colors in the line
+                unique_colors, counts = np.unique(line, return_counts=True)
+
+                # Sort by counts
+                sorted_indices = np.argsort(-counts)
+                unique_colors = unique_colors[sorted_indices]
+                counts = counts[sorted_indices]
 
                 # Check if all pixels in the line have the same color
-                if list(line.values())[0] > (width * 0.95): # Check if at least 95% of the pixels in the line are the same color
+                if counts[0] > (width * 0.95): # Check if at least 95% of the pixels in the line are the same color
                     if not wait:
                         line_count += 1
                         if line_count == args.auto_crop_line_count:
@@ -178,15 +181,14 @@ def downloadComic(link):
                             lasty = y
                             line_count = 0
                             wait = True
-                    #print(f'Line {y + 1}: All pixels have the same color')
                 else:
                     line_count = 0
                     wait = False
-                    #print(f'Line {y + 1}: Pixels have different colors')
-                if y == height - 1 and not y == lasty: # save the remaining image only if there is any more to save
-                    count += 1
-                    segment = image.crop((0, lasty, width, y))
-                    segment.save(f'data/{make_safe_filename_windows(title)}/{chapter_index}/{count}.jpg')
+
+            if y == height - 1 and not y == lasty: # save the remaining image only if there is any more to save
+                count += 1
+                segment = image.crop((0, lasty, width, y))
+                segment.save(f'data/{make_safe_filename_windows(title)}/{chapter_index}/{count}.jpg')
             print('')
 
         book_chapter = epub.EpubHtml(title=chapter[0], file_name=f'chapter{chapter_index}.xhtml')
