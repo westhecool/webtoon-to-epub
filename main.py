@@ -41,6 +41,7 @@ def combineImagesVertically(image_paths):
     for img in images:
         combined_image.paste(img, (0, y_offset))
         y_offset += img.height
+        img.close()
 
     return combined_image
 
@@ -61,6 +62,7 @@ def downloadChapter(link, title, chapterid):
         image = Image.open(io.BytesIO(img))
         image = image.convert('RGB')
         image.save(f'data/{make_safe_filename_windows(title)}/{chapterid}/{i}.jpg')
+        image.close()
     print('')
 
 def getChapterList(link):
@@ -197,7 +199,10 @@ def downloadComic(link):
         imgs = sorted(os.listdir(f'data/{make_safe_filename_windows(title)}/{chapter_index}'), key=getNumericIndex)
         for img in imgs:
             print(f'\rAdding image {getNumericIndex(img)}/{len(imgs)} to comic', end='')
-            image = epub.EpubItem(file_name=f'chapter{chapter_index}/{img}', content=open(f'data/{make_safe_filename_windows(title)}/{chapter_index}/{img}', 'rb').read())
+            f = open(f'data/{make_safe_filename_windows(title)}/{chapter_index}/{img}', 'rb')
+            content = f.read()
+            f.close()
+            image = epub.EpubItem(file_name=f'chapter{chapter_index}/{img}', content=content)
             book.add_item(image)
             book_chapter.content += f'<img style="height: 100%;" src="chapter{chapter_index}/{img}"/>'
         print('')
