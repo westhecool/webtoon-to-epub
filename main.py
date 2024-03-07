@@ -2,6 +2,7 @@ from bs4 import BeautifulSoup
 import os
 import shutil
 from PIL import Image
+import time
 import requests
 from ebooklib import epub
 import re
@@ -263,5 +264,15 @@ def downloadComic(link):
     print('\n') # Add 2 empty lines at the end of a book
 
 for link in args.link.split(','):
-    chapter_page_count_total = 0
-    downloadComic(re.sub(r'&page=.*', '', link))
+    def f():
+        global chapter_page_count_total
+        chapter_page_count_total = 0
+        try:
+            downloadComic(re.sub(r'&page=.*', '', link))
+        except Exception as e:
+            print('Failed to download comic.')
+            print(e)
+            print('Retrying in 5 seconds...')
+            time.sleep(5)
+            f()
+    f()
