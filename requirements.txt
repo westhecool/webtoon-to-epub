@@ -1,5 +1,6 @@
 pillow
 requests
+requests[socks]
 beautifulsoup4
 ebooklib
 numpy

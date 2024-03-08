@@ -20,7 +20,12 @@ args.add_argument('--auto-crop', help='Automatically crop the images. (Read more
 args.add_argument('--auto-crop-line-count', help='(See README on GitHub.)', type=int, default=30)
 args.add_argument('--split-into-parts', help='Split the comic into parts.', type=bool, default=False, action=argparse.BooleanOptionalAction)
 args.add_argument('--chapters-per-part', help='Chapters per part. (Default: 100)', type=int, default=100)
+args.add_argument('--proxy', help='Proxy to use', type=str, default="")
 args = args.parse_args()
+
+proxies = {}
+if args.proxy:
+    proxies = {'http': args.proxy, 'https': args.proxy}
 
 chapter_page_count_total = 0
 
@@ -50,7 +55,7 @@ def getNumericIndex(filename:str):
     return int(filename.split('.')[0])
 
 def downloadChapter(link, title, chapterid):
-    html = requests.get(link).text
+    html = requests.get(link, proxies=proxies).text
     soup = BeautifulSoup(html, 'html.parser')
     imglist = soup.find(id='_imageList').findChildren('img')
     i = 0
@@ -59,7 +64,7 @@ def downloadChapter(link, title, chapterid):
     for img in imglist:
         i += 1
         print(f'\rDownloading image {i}/{len(imglist)}', end='')
-        img = requests.get(img['data-url'], headers={'Referer': link}).content
+        img = requests.get(img['data-url'], headers={'Referer': link}, proxies=proxies).content
         image = Image.open(io.BytesIO(img))
         image = image.convert('RGB')
         image.save(f'data/{make_safe_filename_windows(title)}/{chapterid}/{i}.jpg')
@@ -68,7 +73,7 @@ def downloadChapter(link, title, chapterid):
 
 def getChapterList(link):
     global chapter_page_count_total
-    html = requests.get(link).text
+    html = requests.get(link, proxies=proxies).text
     soup = BeautifulSoup(html, 'html.parser')
     for l in soup.find('div', class_='paginate').findChildren('a'):
         i = re.sub(r'.*&page=', '', l['href'])
@@ -88,7 +93,7 @@ def getChapterList(link):
 def downloadComic(link):
     print(f'Link: {link}')
     global chapter_page_count_total
-    html = requests.get(link).text
+    html = requests.get(link, proxies=proxies).text
     soup = BeautifulSoup(html, 'html.parser')
     info = soup.find('div', class_='info')
     title = info.find(class_='subj').text.strip()
