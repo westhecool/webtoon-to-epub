@@ -55,7 +55,7 @@ def getNumericIndex(filename:str):
     return int(filename.split('.')[0])
 
 def downloadChapter(link, title, chapterid):
-    html = requests.get(link, proxies=proxies).text
+    html = requests.get(link, proxies=proxies, timeout=5).text
     soup = BeautifulSoup(html, 'html.parser')
     imglist = soup.find(id='_imageList').findChildren('img')
     i = 0
@@ -64,7 +64,7 @@ def downloadChapter(link, title, chapterid):
     for img in imglist:
         i += 1
         print(f'\rDownloading image {i}/{len(imglist)}', end='')
-        img = requests.get(img['data-url'], headers={'Referer': link}, proxies=proxies).content
+        img = requests.get(img['data-url'], headers={'Referer': link}, proxies=proxies, timeout=5).content
         image = Image.open(io.BytesIO(img))
         image = image.convert('RGB')
         image.save(f'data/{make_safe_filename_windows(title)}/{chapterid}/{i}.jpg')
@@ -73,7 +73,7 @@ def downloadChapter(link, title, chapterid):
 
 def getChapterList(link):
     global chapter_page_count_total
-    html = requests.get(link, proxies=proxies).text
+    html = requests.get(link, proxies=proxies, timeout=5).text
     soup = BeautifulSoup(html, 'html.parser')
     for l in soup.find('div', class_='paginate').findChildren('a'):
         i = re.sub(r'.*&page=', '', l['href'])
@@ -93,7 +93,7 @@ def getChapterList(link):
 def downloadComic(link):
     print(f'Link: {link}')
     global chapter_page_count_total
-    html = requests.get(link, proxies=proxies).text
+    html = requests.get(link, proxies=proxies, timeout=5).text
     soup = BeautifulSoup(html, 'html.parser')
     info = soup.find('div', class_='info')
     title = info.find(class_='subj').text.strip()
