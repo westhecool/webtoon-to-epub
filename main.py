@@ -155,26 +155,26 @@ def downloadComic(link):
             wait = False
             width, height = image.size
             lastpercent = 0
-            image_array = np.array(image)
+            # Convert image to numpy array in grey scale
+            image_array = np.array(image.convert('L').getdata(), np.uint8).reshape((height, width))
             for y in range(height):
                 percent = int(((y + 1) / height) * 100)
                 if percent > lastpercent:
                     print(f'\r{percent}% done', end='')
                     lastpercent = percent
                 
-                # Extract line of pixels
-                line = image_array[y, :]
+                # get all the pixels in the line
+                line = image_array[y]
+                uniques, counts = np.unique(line, return_counts=True)
 
-                # Count unique colors in the line
-                unique_colors, counts = np.unique(line, return_counts=True)
+                # Find the index of the largest count
+                max_index = np.argmax(counts)
 
-                # Sort by counts
-                sorted_indices = np.argsort(-counts)
-                unique_colors = unique_colors[sorted_indices]
-                counts = counts[sorted_indices]
-
+                # Calculate the percentage for the largest element
+                largest_percentage = (counts[max_index] * 100) / len(line)
+                
                 # Check if all pixels in the line have the same color
-                if counts[0] > (width * 0.95): # Check if at least 95% of the pixels in the line are the same color
+                if largest_percentage >= 95: # Check if at least 95% of the pixels in the line are the same color
                     if not wait:
                         line_count += 1
                         if line_count == args.auto_crop_line_count:
