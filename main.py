@@ -204,7 +204,15 @@ def downloadComic(link):
             if y == height - 1 and not y == lasty: # save the remaining image only if there is any more to save
                 count += 1
                 segment = image.crop((0, lasty, width, y))
-                segment.save(f'data/{make_safe_filename_windows(title)}/{chapter_index}/{count}.jpg')
+                if segment.height > 65500: # Check if the image is too big
+                    print('\nWarning: Image is too big to save, roughly spliting the image')
+                    segment1 = segment.crop((0, 0, segment.width, segment.height - 65500))
+                    segment2 = segment.crop((0, segment.height - 65500, segment.width, segment.height))
+                    segment1.save(f'data/{make_safe_filename_windows(title)}/{chapter_index}/{count}.jpg')
+                    count += 1
+                    segment2.save(f'data/{make_safe_filename_windows(title)}/{chapter_index}/{count}.jpg')
+                else:
+                    segment.save(f'data/{make_safe_filename_windows(title)}/{chapter_index}/{count}.jpg')
             print('')
 
         book_chapter = epub.EpubHtml(title=chapter[0], file_name=f'chapter{chapter_index}.xhtml')
