@@ -197,8 +197,8 @@ def downloadComic(link):
                             segment = image.crop((0, lasty, width, y - args.auto_crop_line_count + 1))
                             lheight = segment.height
                             while lheight > args.max_image_size: # Check if the image is too tall
-                                segment1 = segment.crop((0, 0, segment.width, segment.height - args.max_image_size))
-                                segment = segment.crop((0, segment.height - args.max_image_size, segment.width, segment.height))
+                                segment1 = segment.crop((0, 0, segment.width, args.max_image_size))
+                                segment = segment.crop((0, args.max_image_size, segment.width, segment.height))
                                 lheight = segment.height
                                 if image_color_similarity(segment1) <= 95: # Check if the image is just white space
                                     segment1.save(f'data/{make_safe_filename_windows(title)}/{chapter_index}/{count}.jpg')
