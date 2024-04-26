@@ -30,6 +30,15 @@ if args.proxy:
 
 chapter_page_count_total = 0
 
+def image_color_similarity(image):   
+    # Convert the image to grayscale and then to a NumPy array
+    image_array = list(image.convert("L").getdata())
+
+    average_similarity = np.mean(image_array) / 255 # 8 Bits per pixel
+
+    # Return the average similarity as a percentage
+    return average_similarity * 100
+
 def make_safe_filename_windows(filename):
     illegal_chars = r'<>:"/\|?*'
     for char in illegal_chars:
@@ -191,10 +200,16 @@ def downloadComic(link):
                                 segment1 = segment.crop((0, 0, segment.width, segment.height - args.max_image_size))
                                 segment = segment.crop((0, segment.height - args.max_image_size, segment.width, segment.height))
                                 lheight = segment.height
-                                segment1.save(f'data/{make_safe_filename_windows(title)}/{chapter_index}/{count}.jpg')
+                                if image_color_similarity(segment1) <= 95: # Check if the image is just white space
+                                    segment1.save(f'data/{make_safe_filename_windows(title)}/{chapter_index}/{count}.jpg')
+                                else:
+                                    count -= 1
                                 count += 1
                                 #print('\nWarning: Image is too big, roughly spliting the image')
-                            segment.save(f'data/{make_safe_filename_windows(title)}/{chapter_index}/{count}.jpg')
+                            if image_color_similarity(segment) <= 95: # Check if the image is just white space
+                                segment.save(f'data/{make_safe_filename_windows(title)}/{chapter_index}/{count}.jpg')
+                            else:
+                                count -= 1
                             lasty = y
                             line_count = 0
                             wait = True
@@ -205,7 +220,10 @@ def downloadComic(link):
             if y == height - 1 and not y == lasty: # save the remaining image only if there is any more to save
                 count += 1
                 segment = image.crop((0, lasty, width, y))
-                segment.save(f'data/{make_safe_filename_windows(title)}/{chapter_index}/{count}.jpg')
+                if image_color_similarity(segment) <= 95: # Check if the image is just white space
+                    segment.save(f'data/{make_safe_filename_windows(title)}/{chapter_index}/{count}.jpg')
+                else:
+                    count -= 1
             print('')
 
         book_chapter = epub.EpubHtml(title=chapter[0], file_name=f'chapter{chapter_index}.xhtml')
