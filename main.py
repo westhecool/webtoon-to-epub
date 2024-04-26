@@ -194,7 +194,7 @@ def downloadComic(link):
                         line_count += 1
                         if line_count == args.auto_crop_line_count:
                             count += 1
-                            segment = image.crop((0, lasty, width, y - args.auto_crop_line_count))
+                            segment = image.crop((0, lasty, width, y - args.auto_crop_line_count + 1))
                             lheight = segment.height
                             while lheight > args.max_image_size: # Check if the image is too tall
                                 segment1 = segment.crop((0, 0, segment.width, segment.height - args.max_image_size))
