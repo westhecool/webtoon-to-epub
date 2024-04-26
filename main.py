@@ -21,6 +21,7 @@ args.add_argument('--auto-crop-line-count', help='(See README on GitHub.)', type
 args.add_argument('--split-into-parts', help='Split the comic into parts.', type=bool, default=False, action=argparse.BooleanOptionalAction)
 args.add_argument('--chapters-per-part', help='Chapters per part. (Default: 100)', type=int, default=100)
 args.add_argument('--proxy', help='Proxy to use', type=str, default="")
+args.add_argument('--max-image-size', help='Max virtual image size. (Default: 2000)', type=int, default=2000)
 args = args.parse_args()
 
 proxies = {}
@@ -185,15 +186,15 @@ def downloadComic(link):
                         if line_count == args.auto_crop_line_count:
                             count += 1
                             segment = image.crop((0, lasty, width, y))
-                            if segment.height > 65500: # Check if the image is too big
-                                print('\nWarning: Image is too big to save, roughly spliting the image')
-                                segment1 = segment.crop((0, 0, segment.width, segment.height - 65500))
-                                segment2 = segment.crop((0, segment.height - 65500, segment.width, segment.height))
+                            lheight = segment.height
+                            while lheight > args.max_image_size: # Check if the image is too tall
+                                segment1 = segment.crop((0, 0, segment.width, segment.height - args.max_image_size))
+                                segment = segment.crop((0, segment.height - args.max_image_size, segment.width, segment.height))
+                                lheight = segment.height
                                 segment1.save(f'data/{make_safe_filename_windows(title)}/{chapter_index}/{count}.jpg')
                                 count += 1
-                                segment2.save(f'data/{make_safe_filename_windows(title)}/{chapter_index}/{count}.jpg')
-                            else:
-                                segment.save(f'data/{make_safe_filename_windows(title)}/{chapter_index}/{count}.jpg')
+                                #print('\nWarning: Image is too big, roughly spliting the image')
+                            segment.save(f'data/{make_safe_filename_windows(title)}/{chapter_index}/{count}.jpg')
                             lasty = y
                             line_count = 0
                             wait = True
@@ -204,15 +205,7 @@ def downloadComic(link):
             if y == height - 1 and not y == lasty: # save the remaining image only if there is any more to save
                 count += 1
                 segment = image.crop((0, lasty, width, y))
-                if segment.height > 65500: # Check if the image is too big
-                    print('\nWarning: Image is too big to save, roughly spliting the image')
-                    segment1 = segment.crop((0, 0, segment.width, segment.height - 65500))
-                    segment2 = segment.crop((0, segment.height - 65500, segment.width, segment.height))
-                    segment1.save(f'data/{make_safe_filename_windows(title)}/{chapter_index}/{count}.jpg')
-                    count += 1
-                    segment2.save(f'data/{make_safe_filename_windows(title)}/{chapter_index}/{count}.jpg')
-                else:
-                    segment.save(f'data/{make_safe_filename_windows(title)}/{chapter_index}/{count}.jpg')
+                segment.save(f'data/{make_safe_filename_windows(title)}/{chapter_index}/{count}.jpg')
             print('')
 
         book_chapter = epub.EpubHtml(title=chapter[0], file_name=f'chapter{chapter_index}.xhtml')
