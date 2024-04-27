@@ -220,6 +220,17 @@ def downloadComic(link):
             if y == height - 1 and not y == lasty: # save the remaining image only if there is any more to save
                 count += 1
                 segment = image.crop((0, lasty, width, y))
+                lheight = segment.height
+                while lheight > args.max_image_size: # Check if the image is too tall
+                    segment1 = segment.crop((0, 0, segment.width, args.max_image_size))
+                    segment = segment.crop((0, args.max_image_size, segment.width, segment.height))
+                    lheight = segment.height
+                    if image_color_similarity(segment1) <= 95: # Check if the image is just white space
+                        segment1.save(f'data/{make_safe_filename_windows(title)}/{chapter_index}/{count}.jpg')
+                    else:
+                        count -= 1
+                    count += 1
+                    #print('\nWarning: Image is too big, roughly spliting the image')
                 if image_color_similarity(segment) <= 95: # Check if the image is just white space
                     segment.save(f'data/{make_safe_filename_windows(title)}/{chapter_index}/{count}.jpg')
                 else:
