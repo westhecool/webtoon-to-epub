@@ -200,13 +200,13 @@ def downloadComic(link):
                                 segment1 = segment.crop((0, 0, segment.width, args.max_image_size))
                                 segment = segment.crop((0, args.max_image_size, segment.width, segment.height))
                                 lheight = segment.height
-                                if image_color_similarity(segment1) <= 95: # Check if the image is just white space
+                                if image_color_similarity(segment1) <= 99: # Check if the image is just white space
                                     segment1.save(f'data/{make_safe_filename_windows(title)}/{chapter_index}/{count}.jpg')
                                 else:
                                     count -= 1
                                 count += 1
                                 #print('\nWarning: Image is too big, roughly spliting the image')
-                            if image_color_similarity(segment) <= 95: # Check if the image is just white space
+                            if image_color_similarity(segment) <= 99: # Check if the image is just white space
                                 segment.save(f'data/{make_safe_filename_windows(title)}/{chapter_index}/{count}.jpg')
                             else:
                                 count -= 1
@@ -225,13 +225,13 @@ def downloadComic(link):
                     segment1 = segment.crop((0, 0, segment.width, args.max_image_size))
                     segment = segment.crop((0, args.max_image_size, segment.width, segment.height))
                     lheight = segment.height
-                    if image_color_similarity(segment1) <= 95: # Check if the image is just white space
+                    if image_color_similarity(segment1) <= 99: # Check if the image is just white space
                         segment1.save(f'data/{make_safe_filename_windows(title)}/{chapter_index}/{count}.jpg')
                     else:
                         count -= 1
                     count += 1
                     #print('\nWarning: Image is too big, roughly spliting the image')
-                if image_color_similarity(segment) <= 95: # Check if the image is just white space
+                if image_color_similarity(segment) <= 99: # Check if the image is just white space
                     segment.save(f'data/{make_safe_filename_windows(title)}/{chapter_index}/{count}.jpg')
                 else:
                     count -= 1
