@@ -74,7 +74,15 @@ def downloadChapter(link, title, chapterid):
     for img in imglist:
         i += 1
         print(f'\rDownloading image {i}/{len(imglist)}', end='')
-        img = requests.get(img['data-url'], headers={'Referer': link}, proxies=proxies, timeout=5).content
+        def get():
+            try:
+                return requests.get(img['data-url'], headers={'Referer': link}, proxies=proxies, timeout=5).content
+            except Exception as e:
+                print(e)
+                print('Retrying in 1 second...')
+                time.sleep(1)
+                return get()
+        img = get()
         image = Image.open(io.BytesIO(img))
         image = image.convert('RGB')
         image.save(f'data/{make_safe_filename_windows(title)}/{chapterid}/{i}.jpg')
