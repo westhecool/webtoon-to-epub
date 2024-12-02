@@ -213,7 +213,7 @@ def downloadChapter(link, title, chapterid):
                 print(e)
                 print('Retrying in 1 second...')
                 time.sleep(1)
-                return get()
+                get(url, index)
         running += 1
         threading.Thread(target=get, args=(str(img['data-url']), int(i))).start()
         while running >= args.threads:
