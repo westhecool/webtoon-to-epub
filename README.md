@@ -18,7 +18,7 @@ python3 -m venv venv
 The input **must** be a link to the chapter list of the webtoon series. Please do not use the mobile version of the site as it's not tested.
 
 ## Auto-Crop
-Webtoon stores images in a very weird way where they are at a fixed size which often leads to comic panels getting cut right in half. You can use the argument `--auto-crop` to attempt to automatically crop the images. (Enabled by default.) This isn't perfect though, and may be buggy. It works by reading the image in horizontal lines and if there is at least 95% of the same color in a line we're assuming that that is a break in the comic panel. (For example: Say there are 30 (The default) white lines in a row then we can assume that this is a break in the comic panel.) If you want to you can try fine-tuning how many lines before it splits, you can with the argument `--auto-crop-line-count N`.
+Webtoon stores images in a very weird way where they are at a fixed size which often leads to comic panels getting cut right in half. You can use the argument `--auto-crop` to attempt to automatically crop the images. (Enabled by default.) This isn't perfect though, and may be buggy.
 
 ## Splitting A Comic Into Parts
 You can use the option `--split-into-parts` (Not enabled by default.) to split the comic into multiple files. By default, it splits every 100 chapters into a different file. You can adjust it with the argument `--chapters-per-part N`.

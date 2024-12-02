@@ -1,27 +1,22 @@
 from bs4 import BeautifulSoup
 import os
 import shutil
-from PIL import Image
 import time
 import requests
 from ebooklib import epub
 import re
-import io
+import cv2
 import numpy as np
 import argparse
-
-Image.MAX_IMAGE_PIXELS = 200000000 # We expect to get some really big images hopefully this is big enough
 
 args = argparse.ArgumentParser()
 args.description = 'Download and convert a whole webtoon series to epub.'
 args.add_argument('link', help='Link to webtoon comic to download. (This should be the link to chapter list.)', type=str)
 args.add_argument('--clean-up', help='Clean up the downloaded images after they are put in the epub.', type=bool, default=True, action=argparse.BooleanOptionalAction)
 args.add_argument('--auto-crop', help='Automatically crop the images. (Read more about this in the README on the GitHub.)', type=bool, default=True, action=argparse.BooleanOptionalAction)
-args.add_argument('--auto-crop-line-count', help='(See README on GitHub.)', type=int, default=30)
 args.add_argument('--split-into-parts', help='Split the comic into parts.', type=bool, default=False, action=argparse.BooleanOptionalAction)
 args.add_argument('--chapters-per-part', help='Chapters per part. (Default: 100)', type=int, default=100)
 args.add_argument('--proxy', help='Proxy to use', type=str, default="")
-args.add_argument('--max-image-size', help='Max virtual image size. (Default: 2000)', type=int, default=2000)
 args = args.parse_args()
 
 proxies = {}
@@ -45,21 +40,152 @@ def make_safe_filename_windows(filename):
         filename = filename.replace(char, '_')
     return filename
 
-def combineImagesVertically(image_paths):
-    images = [Image.open(image) for image in image_paths]
+def convert_image_to_jpeg(binary, save_path, quality=90):
+    # Convert binary content to NumPy array
+    image_array = np.frombuffer(binary, dtype=np.uint8)
 
-    max_width = max(i.width for i in images)
-    total_height = sum(i.height for i in images)
-    combined_image = Image.new('RGB', (max_width, total_height), color='white')
+    # Decode the binary array into an image (keep original format)
+    image = cv2.imdecode(image_array, cv2.IMREAD_UNCHANGED)
 
-    # Paste each image onto the new image
+    if image is None:
+        raise Exception("Failed to decode image.")
+
+    # Determine the format and convert as needed
+    image_rgb = None
+    if len(image.shape) == 2: # Grayscale image
+        image_rgb = cv2.cvtColor(image, cv2.COLOR_GRAY2RGB)
+    elif len(image.shape) == 3:
+        channels = image.shape[2]
+        if channels == 3: # Color image (assume RGB)
+            image_rgb = image # No conversion needed
+            #image_rgb = cv2.cvtColor(image, cv2.COLOR_BGR2RGB) # Convert BGR to RGB
+        elif channels == 4: # Image with alpha channel
+            image_rgb = cv2.cvtColor(image, cv2.COLOR_BGRA2RGB)
+    else:
+        raise Exception("Unexpected image format. Exiting.")
+
+    cv2.imwrite(save_path, image_rgb, [cv2.IMWRITE_JPEG_QUALITY, quality])
+
+def combine_images_vertically(image_paths):
+    # Read all images from the paths
+    images = [cv2.imread(image) for image in image_paths]
+    
+    # Ensure all images are read correctly
+    if any(img is None for img in images):
+        raise ValueError("One or more image paths are invalid or the images could not be read.")
+
+    # Determine the maximum width and total height
+    max_width = max(img.shape[1] for img in images)
+    total_height = sum(img.shape[0] for img in images)
+
+    # Create a blank canvas with the maximum width and total height
+    combined_image = np.ones((total_height, max_width, 3), dtype=np.uint8) * 255 # White background
+
+    # Paste each image onto the canvas
     y_offset = 0
     for img in images:
-        combined_image.paste(img, (0, y_offset))
-        y_offset += img.height
-        img.close()
+        height, width, _ = img.shape
+        # Center-align the image horizontally
+        x_offset = (max_width - width) // 2
+        combined_image[y_offset:y_offset+height, x_offset:x_offset+width] = img
+        y_offset += height
 
     return combined_image
+
+def has_significant_white_content(image, white_pixel_threshold=500, intensity_threshold=15):
+    # Determine if a image contains meaningful white content based on white pixels and intensity variation.
+
+    # Convert image to grayscale
+    gray_section = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+
+    # Check the number of white pixels
+    white_pixels = np.sum(gray_section > 200) # Count pixels close to white
+
+    # Check intensity variation
+    intensity_variation = np.std(gray_section) # Standard deviation of pixel intensities
+
+    # Keep image if it has enough white pixels or sufficient intensity variation
+    return white_pixels >= white_pixel_threshold or intensity_variation > intensity_threshold
+
+def has_significant_black_content(image, black_pixel_threshold=500, intensity_threshold=15):
+    # Determine if a image contains meaningful black content based on black pixels and intensity variation.
+
+    # Convert image to grayscale
+    gray_section = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+
+    # Count black pixels (intensity close to 0)
+    black_pixels = np.sum(gray_section < 50) # Count pixels close to black
+
+    # Check intensity variation
+    intensity_variation = np.std(gray_section) # Standard deviation of pixel intensities
+
+    # Keep image if it has enough black pixels or sufficient intensity variation
+    return black_pixels >= black_pixel_threshold or intensity_variation > intensity_threshold
+
+def has_significant_content(section, background):
+    if background == 'white':
+        return has_significant_black_content(section)
+    else:
+        return has_significant_white_content(section)
+
+def crop_vertical_sections(image, output_folder, min_height=30, quality=90, background='white', _section_index=0, _recursion_depth=0):
+    height, width, _ = image.shape
+
+    # Convert image to grayscale
+    gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+
+    # Apply thresholding based on the background color
+    if background == 'white':
+        _, binary = cv2.threshold(gray, 230, 255, cv2.THRESH_BINARY_INV)
+    else: # Background is black
+        _, binary = cv2.threshold(gray, 15, 255, cv2.THRESH_BINARY)
+
+    # Sum along rows to detect vertical content
+    vertical_sum = np.sum(binary, axis=1)
+
+    # Find "content regions" where vertical_sum > 0
+    content_regions = []
+    in_content = False
+    start_y = 0
+
+    for y, value in enumerate(vertical_sum):
+        if value > 0 and not in_content: # Start of a content region
+            in_content = True
+            start_y = y
+        elif value == 0 and in_content: # End of a content region
+            in_content = False
+            end_y = y
+            if (end_y - start_y) > min_height: # Only save if the region is tall enough
+                content_regions.append((start_y, end_y))
+
+    os.makedirs(output_folder, exist_ok=True)
+
+    # Save each content region as a separate image
+    last_end_y = 0
+    for i, (start_y, end_y) in enumerate(content_regions):
+        last_end_y = end_y
+        cropped = image[start_y:end_y, :] # Crop full width
+        if not has_significant_content(cropped, background): # Skip saving images if they don't have any significant content
+            continue
+        if cropped.shape[0] > 3000 and _recursion_depth < 1:
+            _section_index = crop_vertical_sections(cropped, output_folder, min_height, quality, 'black', int(_section_index), _recursion_depth + 1) # Attempt to recrop big images with a black background instead
+        else:
+            _section_index += 1
+            output_path = os.path.join(output_folder, f"{_section_index}.jpg")
+            cv2.imwrite(output_path, cropped, [cv2.IMWRITE_JPEG_QUALITY, quality])
+
+    if last_end_y < height: # Save any remaining content as a separate image
+        cropped = image[last_end_y:, :] # Crop full width
+        if not has_significant_content(cropped, background): # Skip saving images if they don't have any significant content
+            return _section_index
+        if cropped.shape[0] > 3000 and _recursion_depth < 1:
+            _section_index = crop_vertical_sections(cropped, output_folder, min_height, quality, 'black', int(_section_index), _recursion_depth + 1) # Attempt to recrop big images with a black background instead
+        else:
+            _section_index += 1
+            output_path = os.path.join(output_folder, f"{_section_index}.jpg")
+            cv2.imwrite(output_path, cropped, [cv2.IMWRITE_JPEG_QUALITY, quality])
+
+    return _section_index
 
 def getNumericIndex(filename:str):
     return int(filename.split('.')[0])
@@ -83,10 +209,7 @@ def downloadChapter(link, title, chapterid):
                 time.sleep(1)
                 return get()
         img = get()
-        image = Image.open(io.BytesIO(img))
-        image = image.convert('RGB')
-        image.save(f'data/{make_safe_filename_windows(title)}/{chapterid}/{i}.jpg')
-        image.close()
+        convert_image_to_jpeg(img, f'data/{make_safe_filename_windows(title)}/{chapterid}/{i}.jpg')
     print('')
 
 def getChapterList(link):
@@ -164,86 +287,16 @@ def downloadComic(link):
         downloadChapter(chapter[1], title, chapter_index)
         
         if args.auto_crop:
-            print(f'Auto cropping chapter {chapter_index}: {chapter[0]}')
+            print(f'Auto cropping chapter {chapter_index}: {chapter[0]}...', end='', flush=True)
             images = []
             for img in sorted(os.listdir(f'data/{make_safe_filename_windows(title)}/{chapter_index}'), key=getNumericIndex):
                 images.append(f'data/{make_safe_filename_windows(title)}/{chapter_index}/{img}')
-            image = combineImagesVertically(images)
+            image = combine_images_vertically(images)
             # Remove all images in the chapter folder
             for img in os.listdir(f'data/{make_safe_filename_windows(title)}/{chapter_index}'):
                 os.remove(f'data/{make_safe_filename_windows(title)}/{chapter_index}/{img}')
-            lasty = 0
-            line_count = 0
-            count = 0
-            wait = False
-            width, height = image.size
-            lastpercent = 0
-            # Convert image to numpy array in grey scale
-            image_array = np.array(image.convert('L').getdata(), np.uint8).reshape((height, width))
-            for y in range(height):
-                percent = int(((y + 1) / height) * 100)
-                if percent > lastpercent:
-                    print(f'\r{percent}% done', end='')
-                    lastpercent = percent
-                
-                # get all the pixels in the line
-                line = image_array[y]
-                uniques, counts = np.unique(line, return_counts=True)
-
-                # Find the index of the largest count
-                max_index = np.argmax(counts)
-
-                # Calculate the percentage for the largest element
-                largest_percentage = (counts[max_index] * 100) / len(line)
-                
-                # Check if all pixels in the line have the same color
-                if largest_percentage >= 95: # Check if at least 95% of the pixels in the line are the same color
-                    if not wait:
-                        line_count += 1
-                        if line_count == args.auto_crop_line_count:
-                            count += 1
-                            segment = image.crop((0, lasty, width, y - args.auto_crop_line_count + 1))
-                            lheight = segment.height
-                            while lheight > args.max_image_size: # Check if the image is too tall
-                                segment1 = segment.crop((0, 0, segment.width, args.max_image_size))
-                                segment = segment.crop((0, args.max_image_size, segment.width, segment.height))
-                                lheight = segment.height
-                                if image_color_similarity(segment1) <= 99: # Check if the image is just white space
-                                    segment1.save(f'data/{make_safe_filename_windows(title)}/{chapter_index}/{count}.jpg')
-                                else:
-                                    count -= 1
-                                count += 1
-                                #print('\nWarning: Image is too big, roughly spliting the image')
-                            if image_color_similarity(segment) <= 99: # Check if the image is just white space
-                                segment.save(f'data/{make_safe_filename_windows(title)}/{chapter_index}/{count}.jpg')
-                            else:
-                                count -= 1
-                            lasty = y
-                            line_count = 0
-                            wait = True
-                else:
-                    line_count = 0
-                    wait = False
-
-            if y == height - 1 and not y == lasty: # save the remaining image only if there is any more to save
-                count += 1
-                segment = image.crop((0, lasty, width, y))
-                lheight = segment.height
-                while lheight > args.max_image_size: # Check if the image is too tall
-                    segment1 = segment.crop((0, 0, segment.width, args.max_image_size))
-                    segment = segment.crop((0, args.max_image_size, segment.width, segment.height))
-                    lheight = segment.height
-                    if image_color_similarity(segment1) <= 99: # Check if the image is just white space
-                        segment1.save(f'data/{make_safe_filename_windows(title)}/{chapter_index}/{count}.jpg')
-                    else:
-                        count -= 1
-                    count += 1
-                    #print('\nWarning: Image is too big, roughly spliting the image')
-                if image_color_similarity(segment) <= 99: # Check if the image is just white space
-                    segment.save(f'data/{make_safe_filename_windows(title)}/{chapter_index}/{count}.jpg')
-                else:
-                    count -= 1
-            print('')
+            crop_vertical_sections(image, f'data/{make_safe_filename_windows(title)}/{chapter_index}') # Crop the image and save the sections
+            print('done')
 
         book_chapter = epub.EpubHtml(title=chapter[0], file_name=f'chapter{chapter_index}.xhtml')
         book_chapter.content = '<body style="margin: 0;">'
@@ -320,6 +373,7 @@ for link in args.link.split(','):
         try:
             downloadComic(re.sub(r'&page=.*', '', link))
         except Exception as e:
+            raise e
             print('Failed to download comic.')
             print(e)
             print('Retrying in 5 seconds...')
