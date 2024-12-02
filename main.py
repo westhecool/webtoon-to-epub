@@ -383,7 +383,6 @@ for link in args.link.split(','):
         try:
             downloadComic(re.sub(r'&page=.*', '', link))
         except Exception as e:
-            raise e
             print('Failed to download comic.')
             print(e)
             print('Retrying in 5 seconds...')
