@@ -8,6 +8,7 @@ import re
 import cv2
 import numpy as np
 import argparse
+import threading
 
 args = argparse.ArgumentParser()
 args.description = 'Download and convert a whole webtoon series to epub.'
@@ -17,6 +18,7 @@ args.add_argument('--auto-crop', help='Automatically crop the images. (Read more
 args.add_argument('--split-into-parts', help='Split the comic into parts.', type=bool, default=False, action=argparse.BooleanOptionalAction)
 args.add_argument('--chapters-per-part', help='Chapters per part. (Default: 100)', type=int, default=100)
 args.add_argument('--proxy', help='Proxy to use', type=str, default="")
+args.add_argument('--threads', help='How many threads to use when downloading. (Default: 10)', type=int, default=10)
 args = args.parse_args()
 
 proxies = {}
@@ -197,19 +199,27 @@ def downloadChapter(link, title, chapterid):
     i = 0
     if not os.path.exists(f'data/{make_safe_filename_windows(title)}/{chapterid}'):
         os.makedirs(f'data/{make_safe_filename_windows(title)}/{chapterid}')
+    running = 0
     for img in imglist:
         i += 1
         print(f'\rDownloading image {i}/{len(imglist)}', end='')
-        def get():
+        def get(url, index):
+            nonlocal running
             try:
-                return requests.get(img['data-url'], headers={'Referer': link}, proxies=proxies, timeout=5).content
+                img = requests.get(url, headers={'Referer': link}, proxies=proxies, timeout=5).content
+                convert_image_to_jpeg(img, f'data/{make_safe_filename_windows(title)}/{chapterid}/{index}.jpg')
+                running -= 1
             except Exception as e:
                 print(e)
                 print('Retrying in 1 second...')
                 time.sleep(1)
                 return get()
-        img = get()
-        convert_image_to_jpeg(img, f'data/{make_safe_filename_windows(title)}/{chapterid}/{i}.jpg')
+        running += 1
+        threading.Thread(target=get, args=(str(img['data-url']), int(i))).start()
+        while running >= args.threads:
+            time.sleep(0.01)
+    while running > 0:
+        time.sleep(0.01)
     print('')
 
 def getChapterList(link):
