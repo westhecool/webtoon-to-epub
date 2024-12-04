@@ -237,6 +237,8 @@ def getChapterList(link):
     chapters = soup.find_all('li', class_='_episodeItem')
     for chapter in chapters:
         chapter_title = chapter.find('span', class_='subj').text
+        if chapter_title.endswith('BGM'): # This happens if the chapter includes background music
+            chapter_title = chapter_title[:-3].strip()
         chapter_link = chapter.find('a')['href']
         chapter_list.append((chapter_title, chapter_link))
     return chapter_list
