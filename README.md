@@ -2,6 +2,9 @@
 A program to download a whole webtoon comic into a `.epub` file. (For use with an e-reader or similar.)<br>
 Note: **!!This could break at any time because it relies on the current layout of Webtoon's website!!**
 
+## Bug fixes only
+I have decided to stop adding new features and improving this script. Webtoons are meant to be read vertically, while ebooks are not. I have tried to crop them to fit on pages, but this is not perfect and often leads to very long images that are impossible to read. Therefore, I will only be fixing bugs from now on.
+
 ## Installation
 Using a venv:
 ```sh
