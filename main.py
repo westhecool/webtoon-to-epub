@@ -249,7 +249,7 @@ def downloadComic(link):
     html = requests.get(link, proxies=proxies, timeout=5).text
     soup = BeautifulSoup(html, 'html.parser')
     info = soup.find('div', class_='info')
-    title = info.find(class_='subj').text.strip()
+    title = info.find(class_='subj').encode_contents().decode('utf-8').replace('<br>', ' ').replace('<br/>', ' ').strip() # Fix for titles with newlines (<br>)
     genre = info.find(class_='genre').text.strip()
     try:
         author = info.find(class_='author').text.replace('author info', '').strip()
