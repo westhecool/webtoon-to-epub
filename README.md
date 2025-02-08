@@ -3,7 +3,7 @@ A program to download a whole webtoon comic into a `.epub` file. (For use with a
 Note: **!!This could break at any time because it relies on the current layout of Webtoon's website!!**
 
 ## Bug fixes only
-I have decided to stop adding new features and improving this script. Webtoons are meant to be read vertically, while ebooks are not. I have tried to crop them to fit on pages, but this is not perfect and often leads to very long images that are impossible to read. Therefore, I will only be fixing bugs from now on.
+I have decided to stop adding new features and improving this script. Webtoons are meant to be read vertically, while ebooks are not. I have tried to crop them to fit on pages, but this is not perfect and often leads to very long images that are impossible to read. Therefore, I will only be fixing bugs from now on. Also check out [webtoon-to-html](https://github.com/westhecool/webtoon-to-html) if you want a similar program to download webtoon comics for offline viewing.
 
 ## Installation
 Using a venv:
